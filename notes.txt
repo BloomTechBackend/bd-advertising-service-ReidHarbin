@@ -1,0 +1,78 @@
+> Content - HTML for ad
+> Targeting Group (TG) - Targeting Predicates (a single rule a customer must match to be included in the group ) and
+  click-through rate associated with advertising content
+  > AND'd together predicates
+    > TG = (true) && (true || false) && (false)
+
+> CTR - The probability someone will click on the add
+    > 0 to 1 inclusive
+    > CTR are typically low
+
+> PrimeClubService
+    > External service to retrieve a customer's prime benefits
+> CustomerService
+    > External service used to retrieve customer profile information and spending habits
+> MarketplaceID
+    > A unique identifier ofa marketplace
+
+>>> Use Cases <<<
+
+> Create/Update content that targets a group
+> Add new TG to existing content
+> Generate ads for a customer based on existing content
+> Update CTR for TG
+
+>>> Implementation Notes <<<
+
+> Content can have multiple TG
+> TGs have can have multiple predicates that equal one
+> Separate TG and CTR
+> If there is no eligible ad -> Return an empty add
+> If we do not want to throw an exception that will mess up rendering return an empty string
+
+>>> Architecture <<<
+
+> User <---> ATA Advertising Service <---> DDB
+                |
+                | +++ existing service +++
+                |---> PrimeClubService
+                |---> CustomerService
+>>> API <<<
+
+>> Public Models <<
+
+> AdvertisingContent
+    > id: String // Identifier for content
+    > marketPlaceId: String // marketplace to display the ad
+    > content: String // html/css content to be rendered
+
+> TargetingPredicate
+    > targetingPredicateType: (Enum)TargetPredicateType // of : AGE, CATEGORY_SPEND_FREQUENCY, CATEGORY_SPEND_VALUE,
+                                                                PARENT, PRIME_BENEFIT, RECOGNIZED
+
+    > negate: boolean // Value to determine if you should use the inverse of the given rule
+    > attributes: Map<String, String> // attributes
+
+> TargetingGroup
+    > targetingGroupId: String
+    > contentId: String
+    > clickThroughRate: float
+    > targetPredicates: List<TargetingPredicate>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
