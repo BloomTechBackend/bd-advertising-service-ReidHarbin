@@ -67,13 +67,15 @@ public class AdvertisementSelectionLogic {
             if (CollectionUtils.isNotEmpty(contents)) {
 
                 TargetingEvaluator evaluator = new TargetingEvaluator(new RequestContext(customerId, marketplaceId));
-                 List<AdvertisementContent> eligibleContent = contents.stream().filter(content -> {
-                    List<TargetingGroup> targetingGroups = targetingGroupDao.get(content.getContentId());
-                    targetingGroups.sort(Comparator.comparingDouble(TargetingGroup::getClickThroughRate));
+                 List<AdvertisementContent> eligibleContent = contents.stream()
+                    .filter(content ->
+                        targetingGroupDao.get(content.getContentId()).stream()
+                                .sorted(Comparator.comparingDouble(TargetingGroup::getClickThroughRate))
+                                .filter(targetingGroup -> evaluator.evaluate(targetingGroup).isTrue())
+                                .findFirst()
+                                .isPresent()
+                    ).collect(Collectors.toList());
 
-                    return targetingGroups.stream()
-                            .anyMatch(targetingGroup -> evaluator.evaluate(targetingGroup).isTrue());
-                }).collect(Collectors.toList());
                 if (!eligibleContent.isEmpty()) {
                     return new GeneratedAdvertisement(eligibleContent.get(random.nextInt(eligibleContent.size())));
                 }
