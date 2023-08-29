@@ -4,6 +4,8 @@ import com.amazon.ata.advertising.service.dao.ReadableDao;
 import com.amazon.ata.advertising.service.model.AdvertisementContent;
 import com.amazon.ata.advertising.service.model.EmptyGeneratedAdvertisement;
 import com.amazon.ata.advertising.service.model.GeneratedAdvertisement;
+import com.amazon.ata.advertising.service.model.RequestContext;
+import com.amazon.ata.advertising.service.targeting.TargetingEvaluator;
 import com.amazon.ata.advertising.service.targeting.TargetingGroup;
 
 import org.apache.commons.collections4.CollectionUtils;
@@ -12,6 +14,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.*;
+import java.util.stream.Collectors;
 import javax.inject.Inject;
 
 /**
@@ -61,10 +64,19 @@ public class AdvertisementSelectionLogic {
             LOG.warn("MarketplaceId cannot be null or empty. Returning empty ad.");
         } else {
             final List<AdvertisementContent> contents = contentDao.get(marketplaceId);
-
             if (CollectionUtils.isNotEmpty(contents)) {
-                AdvertisementContent randomAdvertisementContent = contents.get(random.nextInt(contents.size()));
-                generatedAdvertisement = new GeneratedAdvertisement(randomAdvertisementContent);
+
+                TargetingEvaluator evaluator = new TargetingEvaluator(new RequestContext(customerId, marketplaceId));
+                 List<AdvertisementContent> eligibleContent = contents.stream().filter(content -> {
+                    List<TargetingGroup> targetingGroups = targetingGroupDao.get(content.getContentId());
+                    targetingGroups.sort(Comparator.comparingDouble(TargetingGroup::getClickThroughRate));
+
+                    return targetingGroups.stream()
+                            .anyMatch(targetingGroup -> evaluator.evaluate(targetingGroup).isTrue());
+                }).collect(Collectors.toList());
+                if (!eligibleContent.isEmpty()) {
+                    return new GeneratedAdvertisement(eligibleContent.get(random.nextInt(eligibleContent.size())));
+                }
             }
 
         }
