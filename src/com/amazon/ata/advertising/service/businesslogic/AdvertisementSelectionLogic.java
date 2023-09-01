@@ -64,25 +64,20 @@ public class AdvertisementSelectionLogic {
             LOG.warn("MarketplaceId cannot be null or empty. Returning empty ad.");
         } else {
             final List<AdvertisementContent> contents = contentDao.get(marketplaceId);
-            if (CollectionUtils.isNotEmpty(contents)) {
 
+            if (CollectionUtils.isNotEmpty(contents)) {
                 TargetingEvaluator evaluator = new TargetingEvaluator(new RequestContext(customerId, marketplaceId));
+
                  List<AdvertisementContent> eligibleContent = contents.stream()
-                    .filter(content ->
-                        targetingGroupDao.get(content.getContentId()).stream()
-                                .sorted(Comparator.comparingDouble(TargetingGroup::getClickThroughRate))
-                                .filter(targetingGroup -> evaluator.evaluate(targetingGroup).isTrue())
-                                .findFirst()
-                                .isPresent()
-                    ).collect(Collectors.toList());
+                         .filter(content -> targetingGroupDao.get(content.getContentId()).stream()
+                                 .anyMatch(targetingGroup -> evaluator.evaluate(targetingGroup).isTrue())
+                         ).collect(Collectors.toList());
 
                 if (!eligibleContent.isEmpty()) {
                     return new GeneratedAdvertisement(eligibleContent.get(random.nextInt(eligibleContent.size())));
                 }
             }
-
         }
-
         return generatedAdvertisement;
     }
 }
