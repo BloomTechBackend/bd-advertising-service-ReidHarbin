@@ -1,10 +1,7 @@
 package com.amazon.ata.advertising.service.businesslogic;
 
 import com.amazon.ata.advertising.service.dao.ReadableDao;
-import com.amazon.ata.advertising.service.model.AdvertisementContent;
-import com.amazon.ata.advertising.service.model.EmptyGeneratedAdvertisement;
-import com.amazon.ata.advertising.service.model.GeneratedAdvertisement;
-import com.amazon.ata.advertising.service.model.RequestContext;
+import com.amazon.ata.advertising.service.model.*;
 import com.amazon.ata.advertising.service.targeting.TargetingEvaluator;
 import com.amazon.ata.advertising.service.targeting.TargetingGroup;
 
@@ -60,24 +57,21 @@ public class AdvertisementSelectionLogic {
      */
     public GeneratedAdvertisement selectAdvertisement(String customerId, String marketplaceId) {
         GeneratedAdvertisement generatedAdvertisement = new EmptyGeneratedAdvertisement();
+        SortedMap<Double, AdvertisementContent> sortedAdvertisements =
+                new TreeMap<>(Comparator.comparingDouble(Double::doubleValue).reversed());
+
         if (StringUtils.isEmpty(marketplaceId)) {
             LOG.warn("MarketplaceId cannot be null or empty. Returning empty ad.");
         } else {
             final List<AdvertisementContent> contents = contentDao.get(marketplaceId);
-
-            if (CollectionUtils.isNotEmpty(contents)) {
-                TargetingEvaluator evaluator = new TargetingEvaluator(new RequestContext(customerId, marketplaceId));
-
-                 List<AdvertisementContent> eligibleContent = contents.stream()
-                         .filter(content -> targetingGroupDao.get(content.getContentId()).stream()
-                                 .anyMatch(targetingGroup -> evaluator.evaluate(targetingGroup).isTrue())
-                         ).collect(Collectors.toList());
-
-                if (!eligibleContent.isEmpty()) {
-                    return new GeneratedAdvertisement(eligibleContent.get(random.nextInt(eligibleContent.size())));
-                }
+            TargetingEvaluator evaluator = new TargetingEvaluator(new RequestContext(customerId, marketplaceId));
+            if (contents != null && !contents.isEmpty()) {
+                contents.forEach(content -> targetingGroupDao.get(content.getContentId()).stream()
+                    .filter(targetingGroup -> evaluator.evaluate(targetingGroup).isTrue())
+                    .forEach(targetingGroup -> sortedAdvertisements.put(targetingGroup.getClickThroughRate(), content)));
             }
         }
-        return generatedAdvertisement;
+        Optional<AdvertisementContent> contentWithHighestCTR = sortedAdvertisements.values().stream().findFirst();
+        return contentWithHighestCTR.map(GeneratedAdvertisement::new).orElse(generatedAdvertisement);
     }
 }

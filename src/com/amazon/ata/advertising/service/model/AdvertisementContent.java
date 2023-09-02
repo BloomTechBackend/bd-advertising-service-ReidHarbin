@@ -89,6 +89,15 @@ public class AdvertisementContent {
         return new Builder();
     }
 
+    @Override
+    public String toString() {
+        return "AdvertisementContent{" +
+                "contentId='" + contentId + '\'' +
+                ", renderableContent='" + renderableContent + '\'' +
+                ", marketplaceId='" + marketplaceId + '\'' +
+                '}';
+    }
+
     /**
      * Builder class used to create AdvertisementContent.
      */
